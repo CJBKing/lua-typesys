@@ -10,7 +10,8 @@ local NO_NAME = "[no name]"
 
 -------------
 
-local last_id = 0 -- 用于生成id的记录变量
+local INVALID_ID = 0
+local last_id = INVALID_ID -- 用于生成id的记录变量
 local type_info = {} -- 类型信息映射表，type为键，info为值
 local alive_objects = {} -- 存活的实例对象映射表，id为键，obj为值
 
@@ -615,7 +616,7 @@ local function delete(obj)
 		print("delete", t._type_name, obj._id)
 		typesys.eventHandler(EVENT_DELETE, obj)
 	end
-	obj._id = 0
+	obj._id = INVALID_ID
 
 	setmetatable(obj, nil)
 end
@@ -664,6 +665,7 @@ typesys.new = new          			  -- (t, ...) 创建或重用实例对象
 typesys.delete = delete    			  -- (obj) 销毁或回收实例对象
 typesys.deleteNoOwnerObjects = deleteNoOwnerObjects -- 销毁所有未被持有的对象 
 
+typesys.INVALID_ID = INVALID_ID
 typesys.DEBUG_ON = _DEBUG_ON
 
 -- 系统回收typesys实例对象时，触发delete逻辑
