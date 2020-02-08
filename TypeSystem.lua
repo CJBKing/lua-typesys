@@ -272,6 +272,11 @@ local function _objFieldAssign(obj, k, v)
 	local info = type_info[t]
 	assert(nil ~= info)
 
+	if nil ~= info.unmanaged[k] then
+		-- 不管理的对象，直接赋值
+		rawset(obj, k, v)
+		return
+	end
 	if _objTryAssignStrongRef(obj, k, v, info) then
 		return
 	end
@@ -333,7 +338,7 @@ proto = {
 	__pool_capacity = -1, -- 对象池容量，负数为无限
 	__strong_pool = false, -- 对象池是否使用强引用
 	__super = typesys.xxx, -- 父类，调用父类函数请使用语法 self.__super.yyy(self, ...)，yyy为函数名，...是参数
-	xxx = typesys.unmanaged -- typesys不管理字段, 使用false占位，而非nil，请使用 "if obj.xxx then", 而不是 "if nil ~= obj.xxx then" 做非空判断!!
+	xxx = typesys.unmanaged -- typesys不管理字段
 	weak_xxx, -- weak ref xxx -- 弱引用字段使用weak_前缀，请注意：字段名是不包含weak_前缀的
 }
 
@@ -513,9 +518,6 @@ local function new(t, ...)
 			end
 		end
 		obj = {_type = t, _refs = refs, _owner = false}
-		for k,v in pairs(info.unmanaged) do
-			obj[k] = v
-		end
 		print("new", t._type_name)
 	end
 
@@ -525,7 +527,7 @@ local function new(t, ...)
 
 	obj._id = id
 
-	-- 将值类型字段直接放置到对象上，不要走截获的点“.”操作逻辑，并设置上类定义的默认值
+	-- 将值类型字段直接放置到对象上
 	for k,v in pairs(info.num) do
 		obj[k] = v
 	end
@@ -536,6 +538,7 @@ local function new(t, ...)
 		obj[k] = v
 	end
 
+	-- 启动截获对象索引访问
 	setmetatable(obj, obj_mt)
 
 	-- 将对象放入映射表中
