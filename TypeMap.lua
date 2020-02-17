@@ -33,10 +33,6 @@ local map = typesys.map {
 	_et_type = 0 -- 元素类型的类别
 }
 
-local function _logFunc(id, func_name, ...)
-	print(string.format("map[%d]:%s", id, func_name), ...)
-end
-
 -- 将要放入map的元素使用此函数进行转换
 local function _inElement(e, et_type)
 	if nil == e then
