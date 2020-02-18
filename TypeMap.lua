@@ -91,9 +91,9 @@ function map:checkElement(e)
 		return true
 	end
 	if _ET_TYPE_STRONG_TYPESYS == self._et_type then
-		return typesys.getType(e) == self._et and not hasOwner(e)
+		return typesys.objIsType(e,  self._et) and not hasOwner(e)
 	elseif _ET_TYPE_WEAK_TYPESYS == self._et_type then
-		return typesys.getType(e) == self._et
+		return typesys.objIsType(e,  self._et)
 	else
 		return type(e) == self._et
 	end

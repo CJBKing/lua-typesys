@@ -1,6 +1,6 @@
 
 -- 打开此开关，系统将会输出日志
-local _DEBUG_ON = true
+local _DEBUG_ON = false
 
 local print = _DEBUG_ON and print or function() end
 local assert = assert
@@ -193,20 +193,30 @@ local function _objHasOwner(obj)
 	return obj._owner or nil ~= external_owners[obj]
 end
 
+-- 判断类型和类型是否匹配
+local function _typeIsType(t1, t2)
+	local info = type_info[t1]
+	if info.external_type then
+		return t1 == t2
+	else
+		local t = t1
+		while nil ~= t do
+			if t == t2 then
+				return true
+			end
+			t = t.__super
+		end
+		return false
+	end
+end
+
 -- 判断对象和类型是否匹配
 local function _objIsType(obj, t)
 	local info = type_info[t]
 	if info.external_type then
 		return external_objects[obj] == t
 	else
-		local obj_t = obj._type
-		while nil ~= obj_t do
-			if obj_t == t then
-				return true
-			end
-			obj_t = obj_t.__super
-		end
-		return false
+		return _typeIsType(obj._type, t)
 	end
 end
 
@@ -261,7 +271,7 @@ local function _objTryAssignWeakRef(obj, k, v, info)
 		-- 如果赋值为nil，那么使用false作为占位值
 		v = false
 	end
-
+	
 	obj._refs[k] = v
 	return true
 end
@@ -475,6 +485,14 @@ local function checkType(t)
 	return nil ~= type_info[t]
 end
 
+local function objIsType(obj, t)
+	return _objIsType(obj, t)
+end
+
+local function typeIsType(t1, t2)
+	return _typeIsType(t1, t2)
+end
+
 local function setOwner(obj)
 	_objSetOwner(obj, getType(obj))
 end
@@ -658,6 +676,8 @@ typesys.getObjectByID = getObjectByID -- (id) 通过ID获取对象
 typesys.getType = getType             -- (obj) 通过对象获取类型
 typesys.getTypeName = getTypeName     -- (objOrType) 通过对象获取类型获取类型名
 typesys.checkType = checkType         -- (t) 判断是否是typesys的类型或者已注册的外部类型
+typesys.objIsType = objIsType		  -- (obj, t) 判断一个对象是否属于某个类型
+typesys.typeIsType = typeIsType 	  -- (t1, t2) 判断一个类型是否属于某个类型
 typesys.setOwner = setOwner           -- (obj) 标志对象被持有
 typesys.clearOwner = clearOwner       -- (obj) 去除对象被持有标志
 typesys.hasOwner = hasOwner           -- (obj) 判断对象是否被持有
