@@ -101,12 +101,16 @@ end
 
 -- 判断键是否存在
 function map:containKey(k)
-	return nil ~= self._m[k]
+	return nil ~= self:get(k)
 end
 
 -- 判断map是否为空（没有元素）
 function map:isEmpty()
-	return nil == next(self._m)
+	local e = next(self._m)
+	if nil ~= e then
+		e = _outElement(e, self._et_type)
+	end
+	return nil == e
 end
 
 -- 设置键为k的元素e
@@ -116,7 +120,7 @@ function map:set(k, e)
 
 	_logFunc(self._id, "set", k, e)
 
-	v = _inElement(e, self._et_type)
+	e = _inElement(e, self._et_type)
 
 	if _ET_TYPE_STRONG_TYPESYS == self._et_type then
 		-- 强引用typesys类型，需要对其生命周期进行处理
@@ -169,7 +173,7 @@ end
 function map:_next(k)
 	local k, e = next(self._m, k)
 	if nil ~= e then
-		e = _outElement(v, self._et_type)
+		e = _outElement(e, self._et_type)
 	end
 	return k, e
 end

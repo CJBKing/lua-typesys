@@ -105,62 +105,62 @@ function array:get(i)
 	return _outElement(self._a[i], self._et_type)
 end
 
--- 将下标为i的元素设置为v
-function array:set(i, v)
-	assert(self:checkElement(v))
+-- 将下标为i的元素设置为e
+function array:set(i, e)
+	assert(self:checkElement(e))
 	local a = self._a
 	assert(0 < i and #a >= i) -- 检查下标合法性
 
-	_logFunc(self._id, "set", i, v)
+	_logFunc(self._id, "set", i, e)
 
-	v = _inElement(v, self._et_type)
+	e = _inElement(e, self._et_type)
 
 	if _ET_TYPE_STRONG_TYPESYS == self._et_type then
 		-- 强引用typesys类型，需要对其生命周期进行处理
 		local old = a[i]
-		a[i] = v
-		if nil_slot ~= v then
-			setOwner(v) -- 设置被持有标记
+		a[i] = e
+		if nil_slot ~= e then
+			setOwner(e) -- 设置被持有标记
 		end
 		if nil_slot ~= old then
 			clearOwner(old) -- 去除被持有标记
 			delete(old)
 		end
 	else
-		a[i] = v
+		a[i] = e
 	end
 end
 
 -- 在下标为i的位置插入一个元素
-function array:insert(i, v)
-	assert(self:checkElement(v))
+function array:insert(i, e)
+	assert(self:checkElement(e))
 	local a = self._a
 	assert(0 < i and #a >= i) -- 检查下标合法性
 
-	_logFunc(self._id, "insert", i, v)
+	_logFunc(self._id, "insert", i, e)
 
-	v = _inElement(v, self._et_type)
+	e = _inElement(e, self._et_type)
 
-	table.insert(self._a, i, v)
+	table.insert(self._a, i, e)
 	
-	if nil_slot ~= v and _ET_TYPE_STRONG_TYPESYS == self._et_type then
+	if nil_slot ~= e and _ET_TYPE_STRONG_TYPESYS == self._et_type then
 		-- 如果是强引用typesys类型，则设置被持有标记
-		setOwner(v)
+		setOwner(e)
 	end
 end
 
 -- 从数组尾部压入一个元素
-function array:pushBack(v)
-	assert(self:checkElement(v))
+function array:pushBack(e)
+	assert(self:checkElement(e))
 
-	_logFunc(self._id, "pushBack", v)
+	_logFunc(self._id, "pushBack", e)
 
 	local a = self._a
-	v = _inElement(v, self._et_type)
-	a[#a+1] = v
-	if nil_slot ~= v and _ET_TYPE_STRONG_TYPESYS == self._et_type then
+	e = _inElement(e, self._et_type)
+	a[#a+1] = e
+	if nil_slot ~= e and _ET_TYPE_STRONG_TYPESYS == self._et_type then
 		-- 如果是强引用typesys类型，则设置被持有标记
-		setOwner(v) 
+		setOwner(e) 
 	end
 end
 
@@ -171,13 +171,13 @@ function array:popBack()
 	local a = self._a
 	local n = #a
 	if 0 < n then
-		local v = a[n]
+		local e = a[n]
 		a[n] = nil -- 取出元素后将其从数组中抹去
-		if nil_slot ~= v and _ET_TYPE_STRONG_TYPESYS == self._et_type then
+		if nil_slot ~= e and _ET_TYPE_STRONG_TYPESYS == self._et_type then
 			-- 如果是强引用typesys类型，则去除其被持有的标志
-			clearOwner(v)
+			clearOwner(e)
 		end
-		return _outElement(v, self._et_type)
+		return _outElement(e, self._et_type)
 	else
 		return nil
 	end
@@ -197,21 +197,21 @@ function array:peekBack()
 end
 
 -- 从数组头部压入一个元素
-function array:pushFront(v)
-	_logFunc(self._id, "pushFront", v)
+function array:pushFront(e)
+	_logFunc(self._id, "pushFront", e)
 
-	if nil == v and 0 == #self._a then
+	if nil == e and 0 == #self._a then
 		return
 	end
-	assert(self:checkElement(v))
+	assert(self:checkElement(e))
 	
-	v = _inElement(v, self._et_type)
+	e = _inElement(e, self._et_type)
 
-	table.insert(self._a, 1, v)
+	table.insert(self._a, 1, e)
 
-	if nil_slot ~= v and _ET_TYPE_STRONG_TYPESYS == self._et_type then
+	if nil_slot ~= e and _ET_TYPE_STRONG_TYPESYS == self._et_type then
 		-- 如果是强引用typesys类型，则设置被持有标记
-		setOwner(v)
+		setOwner(e)
 	end
 end
 
@@ -221,13 +221,13 @@ function array:popFront()
 
 	local a = self._a
 	if 0 < #a then
-		local v = a[1]
+		local e = a[1]
 		table.remove(a, 1)
-		if nil_slot ~= v and _ET_TYPE_STRONG_TYPESYS == self._et_type then
+		if nil_slot ~= e and _ET_TYPE_STRONG_TYPESYS == self._et_type then
 			-- 如果是强引用typesys类型，则去除其被持有的标志
-			clearOwner(v)
+			clearOwner(e)
 		end
-		return _outElement(v, self._et_type)
+		return _outElement(e, self._et_type)
 	else
 		return nil
 	end

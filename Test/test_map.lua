@@ -14,6 +14,8 @@ for i=1, 10 do
 	m:set(string.format("test_%d", i), i)
 end
 
+print(m:containKey("test_5"))
+
 print()
 
 if not m:isEmpty() then
@@ -21,6 +23,8 @@ if not m:isEmpty() then
 		print(string.format("%s -> %d", k, v))
 	end
 end
+
+m:clear()
 
 print()
 

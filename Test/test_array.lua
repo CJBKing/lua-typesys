@@ -19,6 +19,8 @@ print()
 
 a:set(2, 101)
 a:insert(3, 102)
+a:peekBack()
+a:peekFront()
 a:popFront()
 a:popBack()
 
@@ -27,6 +29,8 @@ print()
 for i=1, a:size() do
 	print(a:get(i))
 end
+
+a:clear()
 
 print()
 
