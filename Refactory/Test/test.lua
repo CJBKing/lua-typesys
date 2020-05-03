@@ -1,6 +1,11 @@
 package.path = package.path ..';../?.lua'
 require("TypeSystemHeader")
 
+local new = typesys.new
+local delete = typesys.delete
+
+YYY = typesys.YYY{}
+
 XXX = typesys.XXX {
 	__pool_capacity = -1, 	-- 对象池容量，负数为无限
 	__strong_pool = false,	-- 对象池是否使用强引用
@@ -20,7 +25,11 @@ XXX = typesys.XXX {
 	c = typesys.__unmanaged,-- 定义非托管的字段c
 }
 
-function XXX:_ctor(...) end -- 类实例化对象的构造函数，创建或重用时被调用
-function XXX:_dtor(...) end -- 类实例化对象的析构函数，销毁或回收时被调用
+function XXX:__ctor(...) print("XXX.ctor", ...) end -- 类实例化对象的构造函数，创建或重用时被调用
+function XXX:__dtor(...) print("XXX.dtor", ...) end -- 类实例化对象的析构函数，销毁或回收时被调用
 
-function XXX:foo(...) end 	-- 自定义实例化对象的函数
+function XXX:foo(...) print("foo", ...) end 	-- 自定义实例化对象的函数
+
+local obj = new(XXX)
+obj:foo("hello")
+delete(obj)

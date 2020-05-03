@@ -21,22 +21,22 @@ XXX = typesys.XXX {
 	c = typesys.__unmanaged,-- 定义非托管的字段c
 }
 
-function XXX:_ctor(...) end -- 类实例化对象的构造函数，创建或重用时被调用
-function XXX:_dtor(...) end -- 类实例化对象的析构函数，销毁或回收时被调用
+function XXX:__ctor(...) end -- 类实例化对象的构造函数，创建或重用时被调用
+function XXX:__dtor(...) end -- 类实例化对象的析构函数，销毁或回收时被调用
 
 function XXX:foo(...) end 	-- 自定义实例化对象的函数
 
 实例化对象访问自身的类型：
-self._type
+self.__type
 
 调用父类函数：
-XXX.__super._ctor(self, ...)
-XXX.__super._dtor(self, ...)
+XXX.__super.__ctor(self, ...)
+XXX.__super.__dtor(self, ...)
 XXX.__super.foo(self, ...)
 或
-self._type.__super._ctor(self, ...)
-self._type.__super._dtor(self, ...)
-self._type.__super.foo(self, ...)
+self.__type.__super.__ctor(self, ...)
+self.__type.__super.__dtor(self, ...)
+self.__type.__super.foo(self, ...)
 
 注意：
 __双下划线前缀由系统保留，自定义请勿使用
@@ -44,8 +44,29 @@ _下划线前水为私有字段，私有字段，私有函数，只能由实例�
 
 --]]
 
+local _CHECK_MODE = true -- 启动强制检查机制，及时发现代码问题，但会有运行性能损耗
+
 local assert = assert
 local print = print
+
+-- 辅助函数
+local function _copyTable(to, from)
+	for k, v in pairs(from) do
+		to[k] = v
+	end
+end
+local function _poolPush(pool, obj)
+	pool[#pool+1] = obj
+end
+local function _poolPop(pool)
+	local n = #pool
+	if 0 < n then
+		local e = pool[n]
+		pool[n] = nil
+		return e
+	end
+	return nil
+end
 
 typesys = {__unmanaged = {}}
 
@@ -57,30 +78,256 @@ local _obj_mt = {} 						-- 用于实例对象
 
 -- 系统用到的辅助table
 local _type_info_map = {} -- 类型信息映射表，type为键，info为值
+local _INVALID_ID = 0
+local _last_id = _INVALID_ID 
+local _alive_objects = {} -- 存活的实例对象映射表，id为键，obj为值
 
-local function _copyTable(to, from)
-	for k, v in pairs(from) do
-		to[k] = v
-	end
+local function _genObjID()
+	_last_id = _last_id + 1
+	return _last_id
 end
-local function _getTypeName(t)
+local function _getObjectByID(id)
+	return _alive_objects[id]
+end
+
+-- 用于类型的辅助函数
+local function _type_getName(t)
 	return t.__type_name
 end
-
-_type_mt.__index = function(t, k)
-	return rawget(t, k)
+local function _type_isType(t1, t2)
+	local info = _type_info_map[t1]
+	local t = t1
+	while nil ~= t do
+		if t == t2 then
+			return true
+		end
+		t = t.__super
+	end
+	return false
 end
 
-_type_mt.__newindex = function(t, k, v)
-	return rawset(t, k, v)
+-- 用于对象的辅助函数
+local function _obj_setID(obj, id)
+	obj.__id = id
+end
+local function _obj_getID(obj)
+	return obj.__id
+end
+local function _obj_hasOwner(obj)
+	return obj.__owner or false
+end
+local function _obj_setOwner(obj, owner)
+	obj.__owner = owner.__id
+end
+local function _obj_clearOwner(obj)
+	obj.__owner = false
+end
+local function _obj_getOwner(obj)
+	if obj.__owner then
+		return _alive_objects[obj.__owner]
+	end
+	return nil
+end
+local function _obj_getType(obj)
+	return obj.__type
+end
+local function _obj_isType(obj, t)
+	return _type_isType(_obj_getType(obj), t)
+end
+
+local function _obj_create(t, info)
+	local refs = nil
+	if nil ~= next(info.ref) or nil ~= next(info.w_ref) then
+		-- 创建引用表，用于放置被引用的字段对象，默认用false占位
+		refs = {}
+		for k in pairs(info.ref) do
+			refs[k] = false
+		end
+		for k in pairs(info.w_ref) do
+			refs[k] = false
+		end
+	end
+	return {__type = t, __id = _INVALID_ID, __refs = refs, __owner = false}
+end
+local function _obj_alive(obj, id, t, info, ...)
+	_obj_setID(obj, id)
+	
+	local not_refs = obj
+	if _CHECK_MODE then
+		if nil == obj.__not_refs then
+			obj.__not_refs = {}
+		end
+		not_refs = obj.__not_refs
+	end
+	-- 将值类型字段的缺省值赋值给对象
+	for k,v in pairs(info.num) do
+		rawset(not_refs, k, v)
+	end
+	for k,v in pairs(info.str) do
+		rawset(not_refs, k, v)
+	end
+	for k,v in pairs(info.bool) do
+		rawset(not_refs, k, v)
+	end
+	
+	setmetatable(obj, _obj_mt)
+
+	-- 将对象放入映射表中
+	_alive_objects[id] = obj
+
+	-- 调用对象的构造函数
+	if nil ~= t.__ctor then
+		t.__ctor(obj, ...)
+	end
+end
+local function _obj_die(obj, t, info)
+	local id = obj.__id
+	obj.__id = _INVALID_ID
+
+	_alive_objects[id] = nil
+
+	if nil ~= t.__dtor then
+		t.__dtor(obj)
+	end
+
+	setmetatable(obj, nil)
+end
+
+-- 用于值的辅助函数
+local function _v_getTypeName(v)
+	local type_name = type(v)
+	if "table" == type_name then
+		local t = _obj_getType(v)
+		if nil ~= t then
+			return _type_getName(t)
+		end
+	end
+	return type_name
+end
+
+_type_mt.__index = rawget
+_type_mt.__newindex = rawset
+
+_obj_mt.__index = function(obj, field_name)
+	local t = obj.__type
+	local info = _type_info_map[t]
+
+	-- 1. 非托管字段
+	if nil ~= info.unmanaged[field_name] then
+		return nil
+	end
+
+	-- 2. 非引用类型字段
+	local not_refs = obj.__not_refs
+	if nil ~= not_refs then
+		local v = not_refs[field_name]
+		if nil ~= v then
+			return v
+		end
+	end
+
+	-- 3. 对象的引用类型字段
+	local ref = info.ref[field_name]
+	if nil ~= ref then
+		-- 强引用，直接返回引用的对象
+		return obj.__refs[field_name] or nil
+	end
+	ref = info.w_ref[field_name]
+	if nil ~= ref then
+		-- 弱引用，通过引用的ID查找引用的对象
+		local ref_id = obj.__refs[field_name]
+		if ref_id then
+			return _alive_objects[ref_id]
+		end
+		return nil
+	end
+
+	-- 4. 类型字段（一般指函数，或静态变量）
+	local tv = t[field_name]
+	if nil ~= tv then
+		return tv
+	end
+
+	-- 5.
+	assert(false, string.format("<字段获取错误> 字段不存在：%s.%s", t.__type_name, field_name))
+end
+_obj_mt.__newindex = function(obj, field_name, v)
+	local t = obj.__type
+	local info = _type_info_map[t]
+
+	-- 1. 非托管字段
+	if nil ~= info.unmanaged[field_name] then
+		rawset(obj, field_name, v)
+		return
+	end
+
+	-- 2. 非引用类型字段
+	local not_refs = obj.__not_refs
+	if nil ~= not_refs and nil ~= not_refs[field_name] then
+		if nil ~= info.num[field_name] then
+			assert("number" == type(v), string.format("<字段赋值错误> 类型不匹配：%s.%s(number)，值类型为：%s", t.__type_name, field_name, _v_getTypeName(v)))
+			not_refs[field_name] = v
+		elseif nil ~= info.str[field_name] then
+			assert("string" == type(v), string.format("<字段赋值错误> 类型不匹配：%s.%s(string)，值类型为：%s", t.__type_name, field_name, _v_getTypeName(v)))
+			not_refs[field_name] = v
+		elseif nil ~= info.bool[field_name] then
+			assert("boolean" == type(v), string.format("<字段赋值错误> 类型不匹配：%s.%s(boolean)，值类型为：%s", t.__type_name, field_name, _v_getTypeName(v)))
+			not_refs[field_name] = v
+		end
+		return
+	end
+
+	-- 3. 对象的引用类型字段
+	local rt = info.ref[field_name]
+	if nil ~= rt then
+		-- 强引用类型字段
+		if nil ~= v then
+			assert(not _obj_hasOwner(v), string.format("<字段赋值错误> 值已经被其他所有者持有：%s.%s(number)，持有者类型为：%s", t.__type_name, field_name, _obj_getOwner(v).__type))
+			assert(_obj_isType(v, rt), string.format("<字段赋值错误> 类型不匹配：%s.%s(%s)，值类型为：%s", t.__type_name, field_name, _type_getName(rt), _v_getTypeName(v)))
+			_obj_setOwner(v, obj)
+		else
+			-- 如果赋值为nil，那么使用false作为占位值
+			v = false
+		end
+
+		local old = obj.__refs[field_name]
+		obj.__refs[field_name] = v
+
+		if old then
+			-- 销毁原持有的对象
+			_obj_clearOwner(old)
+			typesys.delete(old)
+		end
+		return
+	end
+	rt = info.w_ref[field_name]
+	if nil ~= rt then
+		-- 弱引用类型字段
+		if nil ~= v then
+			assert(_obj_isType(v, rt), string.format("<字段赋值错误> 类型不匹配：%s.%s(%s)，值类型为：%s", t.__type_name, field_name, _type_getName(rt), _v_getTypeName(v)))
+			v = _obj_getID(v)
+		else
+			-- 如果赋值为nil，那么使用false作为占位值
+			v = false
+		end
+
+		obj.__refs[field_name] = v
+		return
+	end
+
+	-- 4. 类型字段
+	assert(nil == t[field_name], string.format("<字段赋值错误> 不允许用对象为类字段赋值：%s.%s", t.__type_name, field_name))
+
+	-- 5.
+	assert(false, string.format("<字段赋值错误> 字段不存在：%s.%s", t.__type_name, field_name))
 end
 
 -- 类型定义语法糖，用于实现typesys.XXX {}语法
 -- 此语法可以将{}作为proto传递给__call函数
 _type_def_mt.__call = function(t, proto)
-	assert(nil == _type_info_map[t], "<类型定义错误> 重复定义类型：".._getTypeName(t))
+	assert(nil == _type_info_map[t], "<类型定义错误> 重复定义类型："..t.__type_name)
 
-	print("\n------定义类型开始：", _getTypeName(t), "--------")
+	print("\n------定义类型开始：", t.__type_name, "--------")
 
 	local info = {
 		pool_capacity = -1,
@@ -148,7 +395,7 @@ _type_def_mt.__call = function(t, proto)
 				elseif "boolean" == vt  then
 					info.bool[field_name] = v
 					print("boolean类型字段：", field_name, "缺省值：", v)
-				elseif vt == "table" and nil ~= typesys[_getTypeName(v)] then
+				elseif vt == "table" and nil ~= typesys[_type_getName(v)] then
 					-- 引用类型
 					local weak_field_name = field_name:match("^weak_(.+)")
 					if weak_field_name then
@@ -156,11 +403,11 @@ _type_def_mt.__call = function(t, proto)
 						
 						field_name = weak_field_name
 						info.w_ref[field_name] = v
-						print("弱引用类型字段：", field_name, "=", _getTypeName(v))
+						print("弱引用类型字段：", field_name, "=", _type_getName(v))
 					else
 						assert(nil == info.w_ref[field_name], "<类型定义错误> 强引用字段与弱引用字段重名："..field_name)
 						info.ref[field_name] = v
-						print("强引用类型字段：", field_name, "=", _getTypeName(v))
+						print("强引用类型字段：", field_name, "=", _type_getName(v))
 					end
 				else
 					assert(false, "<类型定义错误> 字段值类型错误："..field_name)
@@ -170,14 +417,73 @@ _type_def_mt.__call = function(t, proto)
 	end
 
 	if not info.strong_pool then
-		setmetatable(info.pool, weak_pool_mt)
+		setmetatable(info.pool, _weak_pool_mt)
 	end
 
 	-- 将类型信息放入到映射表中
 	_type_info_map[t] = info
 
-	print("------类型定义结束：", _getTypeName(t), "--------\n")
+	print("------类型定义结束：", t.__type_name, "--------\n")
 	return t
+end
+
+function typesys.new(t, ...)
+	local info = _type_info_map[t]
+	assert(nil ~= info, "<new错误> 类型不存在")
+
+	-- 1. 生成实例ID
+	local id = _genObjID()
+
+	-- 2. 尝试重用
+	local obj = _poolPop(info.pool)
+	if nil == obj then
+		obj = _obj_create(t, info)
+		print("<new> 新建：", _type_getName(t), id)
+	else
+		print("<new> 重用：", _type_getName(t), id)
+	end
+	
+	-- 3. 使对象生效
+	_obj_alive(obj, id, t, info, ...)
+	return obj
+end
+
+function typesys.delete(obj)
+	assert(not _obj_hasOwner(obj), "<delete错误> 对象仍然被持有，不允许delete")
+
+	local id = _obj_getID(obj)
+	assert(obj == _getObjectByID(id), "<delete错误> 对象不存在")
+
+	local t = _obj_getType(obj)
+	local info = _type_info_map[t]
+
+	-- 1. 使对象失效
+	_obj_die(obj, t, info)
+
+	-- 2. 清除引用
+	local refs = obj.__refs
+	if nil ~= refs then
+		for k, ref in pairs(refs) do
+			refs[k] = false
+			if ref and nil ~= info.ref[k] then
+				-- 销毁强引用字段对象
+				_obj_clearOwner(ref)
+				typesys.delete(ref)
+			end
+		end
+	end
+
+	-- 3. 尝试回收
+	local pool = info.pool
+	local pool_size = #pool
+	local pool_capacity = info.pool_capacity
+	if 0 > pool_capacity or 0 ~= pool_capacity and pool_size < pool_capacity then
+		-- 将对象回收并放入到对象池当中
+		print("<delete> 回收：", _type_getName(t), id)
+		_poolPush(pool, obj)
+	else
+		print("<delete> 销毁：", _type_getName(t), id)
+	end
 end
 
 -- 类型定义语法糖，用于实现typesys.XXX语法
