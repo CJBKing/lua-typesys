@@ -104,7 +104,7 @@ local function _obj_isType(obj, t)
 	return _type_isType(obj.__type, t)
 end
 local function _obj_checkField(obj, field_name)
-	if "_" == string.sub(field_name, 1, 1) then
+	if _CHECK_MODE and "_" == string.sub(field_name, 1, 1) then
 		-- 私有，只允许对象自身访问
 		-- getlocal第一个参数：
 		-- 1：_obj_checkField
