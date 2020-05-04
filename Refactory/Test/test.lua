@@ -32,4 +32,4 @@ function XXX:foo(...) print("foo", ...) end 	-- 自定义实例化对象的函�
 
 local obj = new(XXX)
 obj:foo("hello")
-delete(obj)
+obj = nil

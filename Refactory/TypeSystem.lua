@@ -321,6 +321,9 @@ _obj_mt.__newindex = function(obj, field_name, v)
 	-- 5.
 	assert(false, string.format("<字段赋值错误> 字段不存在：%s.%s", t.__type_name, field_name))
 end
+_obj_mt.__gc = function(obj)
+	typesys.delete(obj) -- 放入对象池的已回收对象会清除其metatable，不用担心会进入此函数导致重复销毁
+end
 
 -- 类型定义语法糖，用于实现typesys.XXX {}语法
 -- 此语法可以将{}作为proto传递给__call函数
@@ -484,6 +487,30 @@ function typesys.delete(obj)
 	else
 		print("<delete> 销毁：", _type_getName(t), id)
 	end
+end
+
+local _temp_pool = {}
+function typesys.gc()
+	local temp = _poolPop(_temp_pool)
+	if nil == temp then
+		temp = {}
+	end
+
+	local i = 1
+	for id, obj in pairs(_alive_objects) do
+		if not _obj_hasOwner(obj) then
+			temp[i] = obj
+			i = i+1
+		end
+	end
+
+	local delete = typesys.delete
+	for i=#temp, 1, -1 do
+		delete(temp[i])
+		temp[i] = nil
+	end
+
+	_poolPush(_temp_pool, temp)
 end
 
 -- 类型定义语法糖，用于实现typesys.XXX语法
