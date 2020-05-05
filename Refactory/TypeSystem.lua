@@ -47,8 +47,8 @@ _下划线前水为私有字段，私有字段，私有函数，只能由实例�
 local _CHECK_MODE = true -- 启动强制检查机制，及时发现代码问题，但会有运行性能损耗
 
 local error = error
--- local print = print
-local print = function()end
+local print = print
+-- local print = function()end
 
 -- 辅助函数
 local function _copyTable(to, from)
