@@ -336,6 +336,11 @@ _obj_mt.__newindex = function(obj, field_name, v)
 	local rt = info.ref[field_name]
 	if nil ~= rt then
 		-- 强引用类型字段
+		local old = obj.__refs[field_name]
+		if old == v then
+			return
+		end
+
 		if nil ~= v then
 			if v.__owner then
 				error(string.format("<字段赋值错误> 值已经被其他所有者持有：%s.%s(number)，持有者类型为：%s", t.__type_name, field_name, _obj_getOwner(v).__type.__type_name))
@@ -349,7 +354,6 @@ _obj_mt.__newindex = function(obj, field_name, v)
 			v = false
 		end
 
-		local old = obj.__refs[field_name]
 		obj.__refs[field_name] = v
 
 		if old then
