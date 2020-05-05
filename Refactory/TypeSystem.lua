@@ -292,13 +292,9 @@ _obj_mt.__index = function(obj, field_name)
 	end
 
 	-- 4. 类型字段（一般指函数，或静态变量）
-	local st = t
-	while nil ~= st do
-		local tv = st[field_name]
-		if nil ~= tv then
-			return tv
-		end
-		st = st.__super
+	local tv = t[field_name]
+	if nil ~= tv then
+		return tv
 	end
 
 	-- 5.
@@ -381,12 +377,8 @@ _obj_mt.__newindex = function(obj, field_name, v)
 	end
 
 	-- 4. 类型字段
-	local st = t
-	while nil ~= st do
-		if nil ~= st[field_name] then
-			error(string.format("<字段赋值错误> 不允许用对象为类字段赋值：%s.%s", t.__type_name, field_name))
-		end
-		st = st.__super
+	if nil ~= t[field_name] then
+		error(string.format("<字段赋值错误> 不允许用对象为类字段赋值：%s.%s", t.__type_name, field_name))
 	end
 
 	-- 5.
