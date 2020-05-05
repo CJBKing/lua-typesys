@@ -24,15 +24,16 @@ XXX = typesys.def.XXX {
 
 	c = typesys.__unmanaged,-- 定义非托管的字段c
 
-	-- _a = typesys.array,		-- 定义类型为数组的私有字段_a
-	-- _m = typesys.map,		-- 定义类型为数组的私有字段_a
+	_a = typesys.array,		-- 定义类型为数组的私有字段_a
+	_m = typesys.map,		-- 定义类型为数组的私有字段_a
 }
 
 -- 类实例化对象的构造函数，创建或重用时被调用
 function XXX:__ctor(...)
-	-- self._a = new(typesys.array, type(0))
-	-- self._m = new(typesys.map, type(""), type(0))
+	self._a = new(typesys.array, type(0))
+	self._m = new(typesys.map, type(""), type(0))
 
+	self._a[1] = 1
 	print("XXX.ctor", ...)
 end 
 
@@ -43,11 +44,13 @@ end
 
 -- 自定义实例化对象的函数
 function XXX:foo(str, n) 
-	-- self._a:pushBack(n)
-	-- self._m:set(str, n)
-	self._i  = n
+	self._a[#self._a+1] = n
+	self._m:set(str, n)
 	print("foo", str, n)
-end 	
+	for k,v in pairs(self._m) do
+		print("map", k, v)
+	end
+end
 
 local obj = new(XXX)
 obj:foo("hello", 1)

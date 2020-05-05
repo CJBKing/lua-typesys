@@ -103,21 +103,6 @@ end
 local function _obj_isType(obj, t)
 	return _type_isType(obj.__type, t)
 end
-local function _obj_checkField(obj, field_name)
-	if _CHECK_MODE and "_" == string.sub(field_name, 1, 1) then
-		-- 私有，只允许对象自身访问
-		-- getlocal第一个参数：
-		-- 1：_obj_checkField
-		-- 2：__index or __newindex
-		-- 3：调用函数
-		local name, value = debug.getlocal(3, 1) 
-		if "self" == name and value == obj then
-			return true
-		end
-		error(string.format("<字段访问错误> 无权限访问：%s.%s", obj.__type.__type_name, field_name))
-	end
-	return true
-end
 local function _v_getTypeName(v)
 	local type_name = type(v)
 	if "table" == type_name then
@@ -265,11 +250,6 @@ _type_mt.__index = rawget
 _type_mt.__newindex = rawset
 
 _obj_mt.__index = function(obj, field_name)
-	-- 0. 访问权限检查
-	if not _obj_checkField(obj, field_name) then
-		return nil
-	end
-
 	local t = obj.__type
 	local info = _type_info_map[t]
 
@@ -313,11 +293,6 @@ _obj_mt.__index = function(obj, field_name)
 	error(string.format("<字段获取错误> 字段不存在：%s.%s", t.__type_name, field_name))
 end
 _obj_mt.__newindex = function(obj, field_name, v)
-	-- 0. 访问权限检查
-	if not _obj_checkField(obj, field_name) then
-		return nil
-	end
-
 	local t = obj.__type
 	local info = _type_info_map[t]
 
@@ -527,12 +502,51 @@ _type_def_mt.__call = function(t, proto)
 	return t
 end
 
+local function _checkField(obj, field_name)
+	if "_" == string.sub(field_name, 1, 1) then
+		-- 私有，只允许对象自身访问
+		-- getlocal第一个参数：
+		-- 1：_checkField
+		-- 2：__index or __newindex
+		-- 3：调用函数
+		local name, value = debug.getlocal(3, 1) 
+		if "self" == name and value == obj then
+			return true
+		end
+		error(string.format("<字段访问错误> 无权限访问：%s.%s", obj.__type.__type_name, field_name))
+	end
+	return true
+end
+
+if _CHECK_MODE then
+	local obj__index = _obj_mt.__index
+	_obj_mt.__index = function(obj, field_name)
+		-- 访问权限检查
+		if not _checkField(obj, field_name) then
+			return nil
+		end
+		return obj__index(obj, field_name)
+	end
+
+	local obj__newindex = _obj_mt.__newindex
+	_obj_mt.__newindex = function(obj, field_name, v)
+		-- 访问权限检查
+		if not _checkField(obj, field_name) then
+			return nil
+		end
+		return obj__newindex(obj, field_name, v)
+	end
+end
+
 typesys.new = _new
 typesys.delete = _delete
 typesys.gc = _gc
 typesys.objIsType = _obj_isType
 function typesys.isType(t)
 	return nil ~= _type_info_map[t]
+end
+function typesys.__getObjMetatable()
+	return _obj_mt
 end
 
 -- 类型定义语法糖，用于实现typesys.def.XXX语法

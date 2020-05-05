@@ -14,10 +14,6 @@ local _ET_TYPE_STRONG_REF = 1 -- 强引用类型
 local _ET_TYPE_WEAK_REF = 2 -- 弱引用类型
 local _ET_TYPE_NOT_REF = 3 -- 不是类型
 
---[[
-为了不破坏typesys对类型设置的metatable，typesys.array类型不支持用[]进行访问
-请使用此类型提供的函数接口进行访问
---]]
 local array = typesys.def.array {
 	__strong_pool = true,
 	_a = typesys.__unmanaged, 	-- 作为容器的table
@@ -55,6 +51,28 @@ local function _trySetLastNil(a, i, e)
 	return false
 end
 
+-- 模拟原生数组的语法
+local _original_obj_mt = typesys.__getObjMetatable()
+local _obj_mt = {}
+for k,v in pairs(_original_obj_mt) do
+	_obj_mt[k] = v
+end
+_obj_mt.__index = function(obj, i)
+	if "number" == type(i) then
+		return obj:get(i)
+	end
+	return _original_obj_mt.__index(obj, i)
+end
+_obj_mt.__newindex = function(obj, i, e)
+	if "number" == type(i) then
+		return obj:set(i, e)
+	end
+	return _original_obj_mt.__newindex(obj, i, e)
+end
+_obj_mt.__len = function(obj)
+	return #rawget(obj, "_a")
+end
+
 -- 创建一个数组，需要指定元素类型，以及是否使用弱引用方式存放元素（默认不使用）
 function array:__ctor(t, weak)
 	local is_sys_t = typesys.isType(t)
@@ -73,10 +91,13 @@ function array:__ctor(t, weak)
 	else
 		self._et_type = _ET_TYPE_NOT_REF
 	end
+
+	setmetatable(self, _obj_mt)
 end
 
 function array:__dtor()
 	self:clear()
+	setmetatable(self, _original_obj_mt)
 end
 
 -- 获得元素个数

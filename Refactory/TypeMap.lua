@@ -13,10 +13,6 @@ local _ET_TYPE_STRONG_REF = 1 -- 强引用类型
 local _ET_TYPE_WEAK_REF = 2 -- 弱引用类型
 local _ET_TYPE_NOT_REF = 3 -- 不是类型
 
---[[
-为了不破坏typesys对类型设置的metatable，typesys.map类型不支持用[]和pairs进行访问
-请使用此类型提供的函数接口进行访问
---]]
 local map = typesys.def.map {
 	__strong_pool = true,
 	_m = typesys.__unmanaged, 	-- 作为容器的table
@@ -43,6 +39,16 @@ local function _outElement(e, et_type)
 	return e
 end
 
+-- 模拟原生map的语法
+local _original_obj_mt = typesys.__getObjMetatable()
+local _obj_mt = {}
+for k,v in pairs(_original_obj_mt) do
+	_obj_mt[k] = v
+end
+_obj_mt.__pairs = function(obj)
+	return obj:pairs()
+end
+
 -- 创建一个map，需要指定键类型，元素类型，以及是否使用弱引用方式存放元素（默认不使用）
 function map:__ctor(kt, et, weak)
 	if "string" ~= type(kt) then
@@ -65,10 +71,13 @@ function map:__ctor(kt, et, weak)
 	else
 		self._et_type = _ET_TYPE_NOT_REF
 	end
+
+	setmetatable(self, _obj_mt)
 end
 
 function map:__dtor()
 	self:clear()
+	setmetatable(self, _original_obj_mt)
 end
 
 -- 判断键是否存在
@@ -143,7 +152,7 @@ function map:_next(k)
 	return k, e
 end
 
--- 遍历map，只能调用此函数来触发
+-- 遍历map
 function map:pairs()
 	return map._next, self
 end
