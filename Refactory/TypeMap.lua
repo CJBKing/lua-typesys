@@ -2,7 +2,6 @@
 local _CHECK_MODE = true -- 启动强制检查机制，及时发现代码问题，但会有运行性能损耗
 
 local error = error
-local print = print
 
 -------------
 
@@ -56,7 +55,10 @@ function map:__ctor(kt, et, weak)
 	end
 	local is_sys_t = typesys.isType(et)
 	if not is_sys_t and "string" ~= type(et) then
-		error("<创建map错误> 元素类型不合法："..type(t))
+		error("<创建map错误> 元素类型不合法："..type(et))
+	end
+	if not is_sys_t and "table" == et then
+		error("<创建数组错误> 不允许创建table类型为元素的数组")
 	end
 
 	self._m = self._m or {}

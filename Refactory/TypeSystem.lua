@@ -47,7 +47,8 @@ _下划线前水为私有字段，私有字段，私有函数，只能由实例�
 local _CHECK_MODE = true -- 启动强制检查机制，及时发现代码问题，但会有运行性能损耗
 
 local error = error
-local print = print
+-- local print = print
+local print = function()end
 
 -- 辅助函数
 local function _copyTable(to, from)
@@ -68,7 +69,7 @@ local function _poolPop(pool)
 	return nil
 end
 
-typesys = {__unmanaged = {}}
+typesys = {__unmanaged = {}, __root = false}
 
 -- 各类metatable
 local _weak_pool_mt = {__mode = "kv"} 	-- 用于弱引用的对象池
@@ -192,9 +193,15 @@ local function _delete(obj)
 	-- 1. 使对象失效
 	obj.__id = _INVALID_ID
 	_alive_objects[id] = nil
-	if nil ~= t.__dtor then
-		t.__dtor(obj)
+	-- 从子类到父类都需要执行析构
+	local st = t
+	while nil ~= st do
+		if nil ~= st.__dtor then
+			st.__dtor(obj)
+		end
+		st = st.__super
 	end
+	
 	setmetatable(obj, nil)
 
 	-- 2. 清除引用
@@ -284,9 +291,13 @@ _obj_mt.__index = function(obj, field_name)
 	end
 
 	-- 4. 类型字段（一般指函数，或静态变量）
-	local tv = t[field_name]
-	if nil ~= tv then
-		return tv
+	local st = t
+	while nil ~= st do
+		local tv = st[field_name]
+		if nil ~= tv then
+			return tv
+		end
+		st = st.__super
 	end
 
 	-- 5.
@@ -369,8 +380,12 @@ _obj_mt.__newindex = function(obj, field_name, v)
 	end
 
 	-- 4. 类型字段
-	if nil ~= t[field_name] then
-		error(string.format("<字段赋值错误> 不允许用对象为类字段赋值：%s.%s", t.__type_name, field_name))
+	local st = t
+	while nil ~= st do
+		if nil ~= st[field_name] then
+			error(string.format("<字段赋值错误> 不允许用对象为类字段赋值：%s.%s", t.__type_name, field_name))
+		end
+		st = st.__super
 	end
 
 	-- 5.
@@ -383,9 +398,6 @@ end
 -- 类型定义语法糖，用于实现typesys.def.XXX {}语法
 -- 此语法可以将{}作为proto传递给__call函数
 _type_def_mt.__call = function(t, proto)
-	if nil ~= _type_info_map[t] then
-		error("<类型定义错误> 重复定义类型："..t.__type_name)
-	end
 
 	print("\n------定义类型开始：", t.__type_name, "--------")
 
@@ -405,12 +417,12 @@ _type_def_mt.__call = function(t, proto)
 
 	if nil ~= proto.__super then
 		local super = proto.__super
-		info.super = super
 		local super_info = _type_info_map[super]
 		if nil == super_info then
 			error("<类型定义错误> 父类未定义")
 		end
 
+		info.super = super
 		-- 将父类的字段查询表拷贝过来
 		_copyTable(info.num, super_info.num)
 		_copyTable(info.str, super_info.str)
@@ -451,11 +463,17 @@ _type_def_mt.__call = function(t, proto)
 			if "__" == string.sub(field_name, 1, 2) then
 				error("<类型定义错误> “__”为系统保留前缀，不允许使用："..field_name)
 			end
+
+			local vt = type(v)
+			local weak_field_name = field_name:match("^weak_(.+)")
+			if weak_field_name and not (vt == "table" and nil ~= rawget(typesys, v.__type_name)) then
+				error("<类型定义错误> 弱引用字段不是typesys定义的类型：".._v_getTypeName(v))
+			end
+
 			if typesys.__unmanaged == v then
 				print("非托管字段：", field_name)
 				info.unmanaged[field_name] = false -- false作为slot占位
 			else
-				local vt = type(v)
 				if "number" == vt then
 					info.num[field_name] = v
 					print("number类型字段：", field_name, "缺省值：", v)
@@ -465,9 +483,8 @@ _type_def_mt.__call = function(t, proto)
 				elseif "boolean" == vt  then
 					info.bool[field_name] = v
 					print("boolean类型字段：", field_name, "缺省值：", v)
-				elseif vt == "table" and nil ~= typesys[v.__type_name] then
+				elseif vt == "table" and nil ~= rawget(typesys, v.__type_name) then
 					-- 引用类型
-					local weak_field_name = field_name:match("^weak_(.+)")
 					if weak_field_name then
 						if nil ~= proto[weak_field_name] then
 							error("<类型定义错误> 弱引用字段与其他字段重名："..field_name)
@@ -545,6 +562,29 @@ typesys.objIsType = _obj_isType
 function typesys.isType(t)
 	return nil ~= _type_info_map[t]
 end
+function typesys.setRootObject(obj)
+	if nil ~= obj then
+		if _alive_objects[obj.__id] ~= obj then
+			error(string.format("<设置错误> 设置的根对象不存在或已销毁：对象类型为%s，对象ID为", obj.__type.__type_name, obj.__id))
+		end
+
+		if obj.__owner then
+			error(string.format("<设置错误> 设置的根对象已经被其他所有者持有：对象类型为%s，对象ID为，持有者类型为%s", obj.__type.__type_name, obj.__id, _obj_getOwner(obj).__type.__type_name))
+		end
+	else
+		obj = false
+	end
+
+	local old = typesys.__root
+	if old ~= obj then
+		obj.__owner = true
+		typesys.__root = obj
+		if old then
+			old.__owner = false
+			_delete(old)
+		end
+	end
+end
 function typesys.__getObjMetatable()
 	return _obj_mt
 end
@@ -573,5 +613,4 @@ setmetatable(typesys, {
 		error("<typesys访问错误> 不存在："..k)
 	end
 })
-
 

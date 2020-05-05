@@ -2,7 +2,6 @@
 local _CHECK_MODE = true -- 启动强制检查机制，及时发现代码问题，但会有运行性能损耗
 
 local error = error
-local print = print
 
 -------------
 
@@ -79,6 +78,9 @@ function array:__ctor(t, weak)
 	if not is_sys_t and "string" ~= type(t) then
 		error("<创建数组错误> 元素类型不合法："..type(t))
 	end
+	if not is_sys_t and "table" == t then
+		error("<创建数组错误> 不允许创建table类型为元素的数组")
+	end
 
 	self._a = self._a or {}
 	self._et = t
@@ -119,7 +121,7 @@ function array:set(i, e)
 
 	if _ET_TYPE_STRONG_REF == self._et_type then
 		-- 强引用类型，需要对其生命周期进行处理
-		local old = a[i]
+		local old = self._a[i]
 		self._a[i] = e
 		if _nil_slot ~= e then
 			e.__owner = self.__id
