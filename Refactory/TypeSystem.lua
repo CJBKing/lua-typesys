@@ -76,6 +76,7 @@ local _weak_pool_mt = {__mode = "kv"} 	-- 用于弱引用的对象池
 local _type_def_mt = {} 				-- 用于类型定义语法糖
 local _type_mt = {} 					-- 用于类型
 local _obj_mt = {} 						-- 用于实例对象
+local _obj_dead_mt = {} 				-- 用于实例对象
 
 -- 系统用到的辅助table
 local _type_info_map = {} -- 类型信息映射表，type为键，info为值
@@ -201,11 +202,9 @@ local function _delete(obj)
 		end
 		st = st.__super
 	end
-	
-	setmetatable(obj, nil)
 
 	-- 2. 清除引用
-	local refs = obj.__refs
+	local refs = rawget(obj, "__refs") -- 如果类型没有引用字段，__refs不存在，避免触发字段检查，使用rawget
 	if nil ~= refs then
 		for k, ref in pairs(refs) do
 			refs[k] = false
@@ -228,6 +227,8 @@ local function _delete(obj)
 	else
 		print("<delete> 销毁：", t.__type_name, id)
 	end
+	
+	setmetatable(obj, _obj_dead_mt)
 end
 
 local _temp_pool = {}
@@ -393,6 +394,13 @@ _obj_mt.__newindex = function(obj, field_name, v)
 end
 _obj_mt.__gc = function(obj)
 	_delete(obj) -- 放入对象池的已回收对象会清除其metatable，不用担心会进入此函数导致重复销毁
+end
+
+_obj_dead_mt.__index = function(obj, field_name)
+	error(string.format("<字段赋值错误> 对象已销毁：%s.%s", obj.__type.__type_name, field_name))
+end
+_obj_dead_mt.__newindex = function(obj, field_name, v)
+	error(string.format("<字段赋值错误> 对象已销毁：%s.%s", obj.__type.__type_name, field_name))
 end
 
 -- 类型定义语法糖，用于实现typesys.def.XXX {}语法
