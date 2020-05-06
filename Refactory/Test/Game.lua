@@ -19,20 +19,22 @@ local os_time = os.time
 
 local function _waitOpt()
 	while true do
-		local opt = io_read("*num")
+		local opt = io_read("*line")
+		opt = tonumber(opt)
 		if 1 == opt or 2 == opt then
-			print("")
+			print("-------------------------------")
 			return opt
 		end
-		print("你的选择超出了你的认知！要么1，要么2")
+		print("你的选择超出了我的认知！要么1，要么2")
 	end
 end
 
 local function _waitNumber()
 	while true do
-		local n = io_read("*num")
-		if "number" == type(n) and 0 < n then
-			print("")
+		local n = io_read("*line")
+		n = tonumber(n)
+		if nil ~= n and 0 < n then
+			print("-------------------------------")
 			return n
 		end
 		print("你得给出一个合理的数字！比0大的那种")
@@ -79,17 +81,19 @@ function Game:__ctor(space_size, start_pos, goal_bonus, chance)
 end
 
 function Game:_start()
-	print(s_format("在[1, %d]的空间中，每个位置都有一个宝箱", #self._space))
-	print("每个宝箱里都有一个宝物，宝箱以宝物的编号从小到大排列着")
-	print(s_format("你是一个勇敢的冒险者，你的国王请求你帮他找到编号为%d的宝物", self._goal_bonus))
+	print("勇敢的冒险者，你好！")
+	print(s_format("在你的面前有%d个宝箱，每个宝箱里都有带编号的宝物", #self._space))
+	print(s_format("你的国王请求你帮他找到编号为%d的宝物", self._goal_bonus))
 	print("你要接受这份委托，获得荣耀吗？")
 	print("\n1：当然，作为一个冒险者，荣耀之于我就是生命！\n2：不了，我是懦夫，不想冒险！")
 	
 	local opt = _waitOpt()
-	if 2 == opt then
-		print("懦夫，再见！")
-		self.exit = true
+	while 1 ~= opt do
+		print("懦夫，你要接受这份委托，获得荣耀吗？")
+		print("\n1：当然，作为一个冒险者，荣耀之于我就是生命！\n2：不了，我是懦夫，不想冒险！")
+		opt = _waitOpt()
 	end
+	print("\n哈哈，我果然没有看走眼，你是一位真正的勇士！\n那么，让我来祝你一臂之力吧。。。\n\n<<<一股神秘的力量将宝箱按照从小到大排列起来了！>>>\n")
 end
 
 function Game:loop()
@@ -149,11 +153,11 @@ function Game:_tryOpen()
 			print(s_format("恭喜你，勇敢的冒险者，你不辱使命，找到了宝物%d，获得了荣耀！", self._goal_bonus))
 			return true
 		else
-			print(s_format("很遗憾，%d并不是你要找的宝物~", bonus))
+			print(s_format("很遗憾，%d并不是你要找的宝物%d", bonus, self._goal_bonus))
 			local chance = box:getChance()
 			if 0 < chance then
 				self._rest_chance = self._rest_chance + chance
-				print("等等，宝箱中里还藏有另外一个东西……")
+				print("。。。。。。\n等等，宝箱中里还藏有另外一个东西\n。。。。。。")
 				print(s_format("哇！！！意外收获，你获得了额外的%d次机会，还可以再开%d个宝箱！", chance, self._rest_chance))
 			elseif 0 < self._rest_chance then
 				if 1 == self._rest_chance then
@@ -172,7 +176,7 @@ function Game:_tryMove()
 		return
 	end
 
-	print("\n你要往前还是往后移动？")
+	print(s_format("\n你当前所处位置是%d，你要往前还是往后移动？", self._pos))
 	print("1：勇往直前！\n2：以退为进！")
 	local dir = _waitOpt()
 	print("移动几步？")
@@ -183,9 +187,9 @@ function Game:_tryMove()
 		if max_steps < steps then
 			steps = max_steps
 			if 0 < steps then
-				print(s_format("一股神秘的力量只让你前进了%d步", steps))
+				print(s_format("\n<<<一股神秘的力量只让你前进了%d步>>>\n", steps))
 			else
-				print("一股神秘的力量导致你原地不动")
+				print("\n<<<一股神秘的力量导致你原地不动>>>\n")
 			end
 			self._pos = #self._space
 		else
@@ -195,9 +199,9 @@ function Game:_tryMove()
 		if self._pos <= steps then
 			steps = self._pos - 1
 			if 0 < steps then
-				print(s_format("一股神秘的力量只让你退后了%d步", steps))
+				print(s_format("\n<<<一股神秘的力量只让你退后了%d步>>>\n", steps))
 			else
-				print("一股神秘的力量导致你原地不动")
+				print("\n<<<一股神秘的力量导致你原地不动>>>\n")
 			end
 			self._pos = 1
 		else
