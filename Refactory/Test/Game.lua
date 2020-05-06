@@ -2,7 +2,7 @@
 package.path = package.path ..';../?.lua'
 require("TypeSystemHeader")
 require("BonusBox")
-require("SpectialBonusBox")
+require("SpecialBonusBox")
 require("io")
 require("os")
 
@@ -48,7 +48,7 @@ Game = typesys.def.Game {
 	exit = false,
 }
 
-function Game:__ctor(space_size, start_pos, goal_bonus, change)
+function Game:__ctor(space_size, start_pos, goal_bonus, chance)
 	local special_num = random(space_size)
 	local goal_pos = random(space_size)
 
@@ -63,7 +63,7 @@ function Game:__ctor(space_size, start_pos, goal_bonus, change)
 			bonus = random((i-1)*bonus_block, i*bonus_block)
 		end
 		if i == special_num then
-			space[i] = new(SpectialBonusBox, bonus, random(change))
+			space[i] = new(SpecialBonusBox, bonus, random(chance))
 		else
 			space[i] = new(BonusBox, bonus)
 		end
@@ -72,7 +72,7 @@ function Game:__ctor(space_size, start_pos, goal_bonus, change)
 	self._space = space
 	self._pos = start_pos
 	self._goal_bonus = goal_bonus
-	self._rest_chance = change
+	self._rest_chance = chance
 	self._opened_pos_map = new(typesys.map, type(0), type(0))
 
 	self:_start()
@@ -214,8 +214,8 @@ print("冒险者："..seed)
 
 local sapce_size = 20
 local goal_bonus = 9527
-local change = 3
-local game = new(Game, sapce_size, random(sapce_size), goal_bonus, change)
+local chance = 3
+local game = new(Game, sapce_size, random(sapce_size), goal_bonus, chance)
 setRootObject(game)
 while game:loop() do gc() end
 game = nil

@@ -13,10 +13,6 @@ function BonusBox:open()
 	return self._bonus, self._open_times
 end
 
-function BonusBox:isOpened()
-	return self._opened
-end
-
 function BonusBox:getChance()
 	return 0
 end
