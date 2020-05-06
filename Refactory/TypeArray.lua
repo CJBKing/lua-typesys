@@ -76,7 +76,7 @@ end
 function array:__ctor(t, weak)
 	local is_sys_t = typesys.isType(t)
 	if not is_sys_t and "string" ~= type(t) then
-		error("<创建数组错误> 元素类型不合法："..type(t))
+		error("<创建数组错误> 元素类型不合法，要么是typesys定义的类型，要么是string类型："..type(t))
 	end
 	if not is_sys_t and "table" == t then
 		error("<创建数组错误> 不允许创建table类型为元素的数组")
@@ -255,18 +255,18 @@ local function _checkElement(e, et, et_type)
 	end
 	if _ET_TYPE_STRONG_REF == et_type then
 		if not typesys.objIsType(e,  et) then
-			error(string.format("<数组访问错误> 元素类型不匹配：%s, %s", et.__type_name, e._type.__type_name))
+			error(string.format("<数组访问错误> 元素类型不匹配：元素类型是%s, 传入的参数类型却是%s", et.__type_name, e._type.__type_name))
 		end
 		if e.__owner then
 			error("<数组访问错误> 元素已经被持有")
 		end
 	elseif _ET_TYPE_WEAK_REF == et_type then
 		if not typesys.objIsType(e,  et) then
-			error(string.format("<数组访问错误> 元素类型不匹配：%s, %s", et.__type_name, e._type.__type_name))
+			error(string.format("<数组访问错误> 元素类型不匹配：元素类型是%s, 传入的参数类型却是%s", et.__type_name, e._type.__type_name))
 		end
 	else
 		if type(e) ~= et then
-			error(string.format("<数组访问错误> 元素类型不匹配：%s, %s", et, type(e)))
+			error(string.format("<数组访问错误> 元素类型不匹配：元素类型是%s, 传入的参数类型却是%s", et, type(e)))
 		end
 	end
 end

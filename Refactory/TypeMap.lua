@@ -51,11 +51,11 @@ end
 -- 创建一个map，需要指定键类型，元素类型，以及是否使用弱引用方式存放元素（默认不使用）
 function map:__ctor(kt, et, weak)
 	if "string" ~= type(kt) then
-		error("<创建map错误> 键类型不合法："..type(kt))
+		error("<创建map错误> 键类型不合法，只能是string类型："..type(kt))
 	end
 	local is_sys_t = typesys.isType(et)
 	if not is_sys_t and "string" ~= type(et) then
-		error("<创建map错误> 元素类型不合法："..type(et))
+		error("<创建map错误> 元素类型不合法，要么是typesys定义的类型，要么是string类型："..type(et))
 	end
 	if not is_sys_t and "table" == et then
 		error("<创建数组错误> 不允许创建table类型为元素的数组")
@@ -162,7 +162,7 @@ end
 -- 检查键合法性
 local function _checkKey(k, kt)
 	if nil == k or type(k) ~= kt then
-		error(string.format("<map访问错误> 键类型不匹配：%s, %s", kt, type(k)))
+		error(string.format("<map访问错误> 键类型不匹配：键类型是%s, 传入的参数类型却是%s", kt, type(k)))
 	end
 end
 -- 检查元素合法性
@@ -172,18 +172,18 @@ local function _checkElement(e, et, et_type)
 	end
 	if _ET_TYPE_STRONG_REF == et_type then
 		if not typesys.objIsType(e,  et) then
-			error(string.format("<map访问错误> 元素类型不匹配：%s, %s", et.__type_name, e._type.__type_name))
+			error(string.format("<map访问错误> 元素类型不匹配：元素类型是%s, 传入的参数类型却是%s", et.__type_name, e._type.__type_name))
 		end
 		if e.__owner then
 			error("<map访问错误> 元素已经被持有")
 		end
 	elseif _ET_TYPE_WEAK_REF == et_type then
 		if not typesys.objIsType(e,  et) then
-			error(string.format("<map访问错误> 元素类型不匹配：%s, %s", et.__type_name, e._type.__type_name))
+			error(string.format("<map访问错误> 元素类型不匹配：元素类型是%s, 传入的参数类型却是%s", et.__type_name, e._type.__type_name))
 		end
 	else
 		if type(e) ~= et then
-			error(string.format("<map访问错误> 元素类型不匹配：%s, %s", et, type(e)))
+			error(string.format("<map访问错误> 元素类型不匹配：元素类型是%s, 传入的参数类型却是%s", et, type(e)))
 		end
 	end
 end

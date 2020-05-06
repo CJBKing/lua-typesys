@@ -216,7 +216,7 @@ local sapce_size = 20
 local goal_bonus = 9527
 local chance = 3
 local game = new(Game, sapce_size, random(sapce_size), goal_bonus, chance)
-setRootObject(game)
+setRootObject(game) -- 非常重要：game对象不会被gc掉
 while game:loop() do gc() end
 game = nil
 
