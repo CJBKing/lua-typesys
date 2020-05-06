@@ -11,7 +11,7 @@ XXX = typesys.def.XXX{
 
 function XXX:__ctor(i1, i2)
 	self.i = i1
-	self._i = i2
+	self._i = i2 -- 正确：在类实例对象的函数内可以访问
 end
 
 local obj = new(XXX, 1, 2)

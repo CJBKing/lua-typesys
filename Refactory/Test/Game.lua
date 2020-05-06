@@ -88,12 +88,28 @@ function Game:_start()
 	print("\n1：当然，作为一个冒险者，荣耀之于我就是生命！\n2：不了，我是懦夫，不想冒险！")
 	
 	local opt = _waitOpt()
-	while 1 ~= opt do
-		print("懦夫，你要接受这份委托，获得荣耀吗？")
-		print("\n1：当然，作为一个冒险者，荣耀之于我就是生命！\n2：不了，我是懦夫，不想冒险！")
+	if 2 == opt then
+		print("伟大的懦夫，你好！")
+		print(s_format("在你的面前有%d个宝箱，每个宝箱里都有带编号的<高清无码小视频>", #self._space))
+		print(s_format("尤其是编号为%d的最为出色哦~", self._goal_bonus))
+		print("要不要去找找看？")
+		print("\n1：当然，高清无码，太良心了！\n2：不了，虽然猜中更精彩，但是我是个蠢驴啊！直接看！！")
+
 		opt = _waitOpt()
+		if 2 == opt then
+			print("原来您是最为尊贵的蠢驴呀，失敬失敬。。。")
+			print("请允许在下双手将链接奉上：<https://edu.uwa4d.com>\n里面有好多优秀的小哥哥小姐姐在等您光临哦~\n")
+			self.exit = true
+			return
+		end
 	end
-	print("\n哈哈，我果然没有看走眼，你是一位真正的勇士！\n那么，让我来祝你一臂之力吧。。。\n\n<<<一股神秘的力量将宝箱按照从小到大排列起来了！>>>\n")
+
+	-- while 1 ~= opt do
+	-- 	print("懦夫，你要接受这份委托，获得荣耀吗？")
+	-- 	print("\n1：当然，作为一个冒险者，荣耀之于我就是生命！\n2：不了，我是懦夫，不想冒险！")
+	-- 	opt = _waitOpt()
+	-- end
+	print("\n哈哈，我果然没有看走眼，你是一位真正的勇士！\n那么，让我来祝你一臂之力吧。。。\n\n<<<一股神秘的力量将宝箱按照宝物编号从小到大排列起来了！>>>\n")
 end
 
 function Game:loop()
@@ -151,6 +167,7 @@ function Game:_tryOpen()
 		self._opened_pos_map:set(self._pos, bonus)
 		if bonus == self._goal_bonus then
 			print(s_format("恭喜你，勇敢的冒险者，你不辱使命，找到了宝物%d，获得了荣耀！", self._goal_bonus))
+			print("请登录网站 https://edu.uwa4d.com 查收")
 			return true
 		else
 			print(s_format("很遗憾，%d并不是你要找的宝物%d", bonus, self._goal_bonus))
