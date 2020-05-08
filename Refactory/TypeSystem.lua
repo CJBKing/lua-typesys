@@ -47,8 +47,8 @@ _下划线前水为私有字段，私有字段，私有函数，只能由实例�
 local _CHECK_MODE = true -- 启动强制检查机制，及时发现代码问题，但会有运行性能损耗
 
 local error = error
--- local print = print
-local print = function()end
+local print = print
+-- local print = function()end
 
 -- 辅助函数
 local function _copyTable(to, from)
@@ -575,18 +575,18 @@ function typesys.setRootObject(obj)
 		if obj.__owner then
 			error(string.format("<设置错误> 设置的根对象已经被其他所有者持有：对象类型为%s，对象ID为，持有者类型为%s", obj.__type.__type_name, obj.__id, _obj_getOwner(obj).__type.__type_name))
 		end
+
+		obj.__owner = true
 	else
 		obj = false
 	end
-
+	
 	local old = typesys.__root
-	if old ~= obj then
-		obj.__owner = true
-		typesys.__root = obj
-		if old then
-			old.__owner = false
-			_delete(old)
-		end
+	typesys.__root = obj
+
+	if old and old ~= obj then
+		old.__owner = false
+		_delete(old)
 	end
 end
 function typesys.__getObjMetatable()

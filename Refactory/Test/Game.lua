@@ -104,11 +104,6 @@ function Game:_start()
 		end
 	end
 
-	-- while 1 ~= opt do
-	-- 	print("懦夫，你要接受这份委托，获得荣耀吗？")
-	-- 	print("\n1：当然，作为一个冒险者，荣耀之于我就是生命！\n2：不了，我是懦夫，不想冒险！")
-	-- 	opt = _waitOpt()
-	-- end
 	print("\n哈哈，我果然没有看走眼，你是一位真正的勇士！\n那么，让我来祝你一臂之力吧。。。\n\n<<<一股神秘的力量将宝箱按照宝物编号从小到大排列起来了！>>>\n")
 end
 
@@ -239,5 +234,6 @@ local chance = 3
 local game = new(Game, sapce_size, random(sapce_size), goal_bonus, chance)
 setRootObject(game) -- 非常重要：game对象不会被gc掉
 while game:loop() do gc() end
+setRootObject(nil)
 game = nil
 
