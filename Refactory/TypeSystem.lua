@@ -33,10 +33,6 @@ self.__type
 XXX.__super.__ctor(self, ...)
 XXX.__super.__dtor(self, ...)
 XXX.__super.foo(self, ...)
-或
-self.__type.__super.__ctor(self, ...)
-self.__type.__super.__dtor(self, ...)
-self.__type.__super.foo(self, ...)
 
 注意：
 __双下划线前缀由系统保留，自定义请勿使用
