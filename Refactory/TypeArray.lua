@@ -6,6 +6,7 @@ local error = error
 -------------
 
 local _delete = typesys.delete
+local _getObjectByID = typesys.getObjectByID
 local _nil_slot = {} -- 空元素占位符
 
 -- 元素类型的类别
@@ -35,7 +36,7 @@ local function _outElement(e, et_type)
 	if _nil_slot == e then
 		return nil
 	elseif _ET_TYPE_WEAK_REF == et_type then
-		return e.__id
+		return _getObjectByID(e)
 	end
 	return e
 end

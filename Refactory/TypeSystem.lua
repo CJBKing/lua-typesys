@@ -43,8 +43,8 @@ _下划线前水为私有字段，私有字段，私有函数，只能由实例�
 local _CHECK_MODE = true -- 启动强制检查机制，及时发现代码问题，但会有运行性能损耗
 
 local error = error
-local print = print
--- local print = function()end
+-- local print = print
+local print = function()end
 
 -- 辅助函数
 local function _copyTable(to, from)
@@ -561,6 +561,9 @@ typesys.gc = _gc
 typesys.objIsType = _obj_isType
 function typesys.isType(t)
 	return nil ~= _type_info_map[t]
+end
+function typesys.getObjectByID(id)
+	return _alive_objects[id]
 end
 function typesys.setRootObject(obj)
 	if nil ~= obj then

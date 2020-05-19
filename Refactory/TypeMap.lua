@@ -6,6 +6,7 @@ local error = error
 -------------
 
 local _delete = typesys.delete
+local _getObjectByID = typesys.getObjectByID
 
 -- 元素类型的类别
 local _ET_TYPE_STRONG_REF = 1 -- 强引用类型
@@ -33,7 +34,7 @@ end
 -- 将要从map中拿出的元素使用此函数进行转换
 local function _outElement(e, et_type)
 	if _ET_TYPE_WEAK_REF == et_type then
-		return e.__id
+		return _getObjectByID(e)
 	end
 	return e
 end
@@ -150,6 +151,9 @@ function map:_next(k)
 	local k, e = next(self._m, k)
 	if nil ~= e then
 		e = _outElement(e, self._et_type)
+		if nil == e then
+			k = nil
+		end
 	end
 	return k, e
 end
